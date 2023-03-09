@@ -78,3 +78,23 @@ int cholesky(Matrix * A) {
     }
     return 0; 
 }
+
+/*  
+ * 
+*/
+int lu_band(BandMatrix * A) {
+
+    int n = A->m, kmax = A->k;
+
+    for (int k = 0; k < n; k++) {
+        double akk = A->a[k][k];
+        if (fabs(akk) < EPS) return -1;
+        for (int i = k + 1; i <= kmax; i++) {
+            A->a[i][k] /= akk;
+            for (int j = k + 1; j <= kmax; j++) {
+                A->a[i][j] -= A->a[i][k]*A->a[k][j];
+            }
+        }
+    }
+    return 0;
+}

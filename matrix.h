@@ -31,4 +31,15 @@ int compute_permutation(int * perm, double * coord, int n_nodes, Triplet * tripl
 void print_vector(double * v, int n);   // imprime le contenu d'un vecteur (tableau) de taille n
 void print_matrix(Matrix * A);          // imprime le contenu d'une matrice
 
+// --- AUXILIARY FUNCTIONS ---
+
+typedef struct {
+	double x;
+	double y;
+	int index;
+} Node;
+
+int cmpfunc (const void * a, const void * b); // fonction de comparaison pour qsort
+void print_triplets(Triplet * t, int n); // imprime le contenu d'un tableau de triplets
+
 #endif
