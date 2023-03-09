@@ -74,6 +74,20 @@ void free_band_matrix(BandMatrix * mat) {
 }
 
 /**
+ * Renvoie le minimum de deux entiers
+*/
+int min(int a, int b) {
+    return a < b ? a : b;
+}
+
+/**
+ * Renvoie le maximum de deux entiers
+*/
+int max(int a, int b) {
+    return a > b ? a : b;
+}
+
+/**
  * Imprime le contenu d'une matrice sur la sortie standard
  * @param A: matrice à imprimer
 */
@@ -116,7 +130,6 @@ int compute_permutation(int * perm, double * coord, int n_nodes, Triplet * tripl
     qsort(nodes, n_nodes, sizeof(Node), cmpfunc);
 
     // save the permutation
-    int *perm_helper = (int *) malloc(sizeof(int)*2*n_nodes);
     for (int i = 0; i < n_nodes; i++) {
         perm[2*nodes[i].index] = 2*i;
         perm[2*nodes[i].index+1] = 2*i+1;
@@ -128,6 +141,7 @@ int compute_permutation(int * perm, double * coord, int n_nodes, Triplet * tripl
         triplets[i].j = perm[triplets[i].j];
     }
 
+    free(nodes);
     return 0;
 }
 
@@ -160,6 +174,21 @@ void print_matrix(Matrix * A) {
 }
 
 /**
+ * Imprime le contenu de la matrice bande A sur la sortie standard
+ * @param A: matrice bande de dimension m x m et largeur de bande k
+*/
+void print_band_matrix(BandMatrix * A) {
+    for (int i = 0; i < A->m; i++) {
+        for (int j = 0; j < A->m; j++) {
+            if (abs(i - j) <= A->k) printf("%.2e\t", A->a[i][j]);
+            else printf("%.2e\t", 0.0);
+        }
+        printf("\n");
+    }
+    printf("\n");
+}
+
+/**
  * Imprime le contenu d'un tableau de triplets sur la sortie standard
  * @param t: tableau de taille n
  * @param n: taille du tableau
@@ -171,53 +200,42 @@ void print_triplets(Triplet * t, int n) {
     printf("\n");
 }
 
-// int main(){
+/**
+ * Ecrit le contenu d'une matrice dans un fichier CSV
+ * @param A: matrice de dimension m x n
+ * @param filename: nom du fichier
+*/
+void matrix_to_csv(Matrix * A, char * filename) {
+    FILE *fp;
+    fp = fopen(filename, "w");
+    for (int i = 0; i < A->m; i++) {
+        for (int j = 0; j < A->n; j++) {
+            if (j==A->n-1) fprintf(fp, "%f", A->a[i][j]);
+     		else fprintf(fp, "%f,", A->a[i][j]);
+        }
+        fprintf(fp, "\n");
+    }
+    fclose(fp);
+}
 
-//     // BandMatrix *A = allocate_band_matrix(4, 1);
-
-//     // double tab[4][4] = {{1.0, 2.0, 0.0, 0.0},
-//     //                     {2.0, 3.0, 4.0, 0.0},
-//     //                     {0.0, 4.0, 5.0, 6.0},
-//     //                     {0.0, 0.0, 6.0, 7.0}};
-//     // for (int i = 0; i < 4; i++) {
-//     //     for (int j = 0; j < 4; j++) {
-//     //         if (tab[i][j] != 0.0) A->a[i][j] = tab[i][j];
-//     //     }
-//     // }
-//     // print_vector(A->data, 12);
-
-//     // for (int i = 0; i < 4; i++) {
-//     //     for (int j = 0; j < 4; j++) {
-//     //         printf("%f\t", A->a[i][j]);
-//     //     }
-//     //     printf("\n");
-//     // }
-
-//     // free_band_matrix(A);
-
-//     int N = 5, k = 2;
-//     BandMatrix *A = allocate_band_matrix(N, k);
-//     double tab[5][5] = {{1.0, 2.0, 4.0, 0.0, 0.0},
-//                         {2.0, 3.0, 4.0, 0.0, 0.0},
-//                         {4.0, 4.0, 5.0, 6.0, 1.0},
-//                         {0.0, 3.0, 6.0, 7.0, 2.0},
-//                         {0.0, 0.0, 1.0, 2.0, 3.0}};
-//     for (int i = 0; i < N; i++) {
-//         for (int j = 0; j < N; j++) {
-//             if (tab[i][j] != 0.0) A->a[i][j] = tab[i][j];
-//         }
-//     }
-//     print_vector(A->data, 12);
-
-//     for (int i = 0; i < N; i++) {
-//         for (int j = 0; j < N; j++) {
-//             printf("%f\t", A->a[i][j]);
-//         }
-//         printf("\n");
-//     }
-
-//     free_band_matrix(A);
-
-
-//     return 0;
-// }
+/**
+ * Ecrit le contenu d'une matrice bande dans un fichier CSV
+ * @param A: matrice carrée de dimension m et de largeur de bande k
+ * @param filename: nom du fichier
+*/
+void bandmatrix_to_csv(BandMatrix * A, char * filename) {
+    FILE *fp;
+    fp = fopen(filename, "w");
+    for (int i = 0; i < A->m; i++) {
+        for (int j = 0; j < A->m; j++) {
+            if (abs(j - i) > A->k) {
+                if (j == A->m - 1) fprintf(fp, "%f", 0.0);
+                else fprintf(fp, "%f,", 0.0);
+            } else {
+                if (j == A->m - 1) fprintf(fp, "%f", A->a[i][j]);
+                else fprintf(fp, "%f,", A->a[i][j]);
+            }
+        }
+        fprintf(fp, "\n");
+    }
+}

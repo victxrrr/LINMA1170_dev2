@@ -39,7 +39,13 @@ typedef struct {
 	int index;
 } Node;
 
+int min(int a, int b); // renvoie le minimum de deux entiers
+int max(int a, int b); // renvoie le maximum de deux entiers
 int cmpfunc (const void * a, const void * b); // fonction de comparaison pour qsort
 void print_triplets(Triplet * t, int n); // imprime le contenu d'un tableau de triplets
+void print_band_matrix(BandMatrix * A); // imprime le contenu d'une matrice bande
+
+void matrix_to_csv(Matrix * A, char * filename); // écrit le contenu d'une matrice dans un fichier CSV
+void bandmatrix_to_csv(BandMatrix * A, char * filename); // écrit le contenu d'une matrice bande dans un fichier CSV
 
 #endif
