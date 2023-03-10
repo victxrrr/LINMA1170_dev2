@@ -2,9 +2,17 @@ CC=gcc
 CFLAGS=-O2 -Wall
 
 solve_deformation: matrix.c lu.c elasticity.c solve_deformation.c
-	$(CC) $(CFLAGS) -o $@ $^ -lm ../gmsh-sdk/lib/libgmsh.so -Wl,-rpath,../gmsh-sdk/lib
-	./solve_deformation square.geo 0.04
+	$(CC) $(CFLAGS) -o $@ $^ -lm -Wno-unused-function ../gmsh-sdk/lib/libgmsh.so -Wl,-rpath,../gmsh-sdk/lib
+	./solve_deformation square.geo 0.03
 	rm -f solve_deformation
+
+measurements: matrix.c lu.c elasticity.c solve_deformation.c
+	for number in 1.0 0.9 0.7 0.5 0.3 0.1 0.05 0.04 0.03 0.025; do \
+		$(CC) $(CFLAGS) -o $@ $^ -lm -Wno-unused-function ../gmsh-sdk/lib/libgmsh.so -Wl,-rpath,../gmsh-sdk/lib ; \
+		./measurements square.geo $$number ; \
+		rm -f measurements ; \
+	done
+
 
 plot: plot.py permuted_matrix.csv bandK.csv
 	python3 $^

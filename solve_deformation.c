@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 #include "../gmsh-sdk/include/gmshc.h"
 #include "matrix.h"
 #include "elasticity.h"
@@ -70,13 +71,26 @@ int main (int argc, char *argv[]) {
 	for (int i = 0; i < 2*n_nodes; i++) bandRHS[perm[i]] = RHS[i]; // permute RHS
 
 	// Solve linear system
+	double cpu_time_used;
+	clock_t start, end;
+	FILE *fd = fopen("time_results.csv", "a");
+	fprintf(fd, "%d,", n_nodes);
+
 	// --- 1 ---
+	start = clock();
 	lu(K);
 	solve(K, RHS);
+	end = clock();
+	cpu_time_used = ((double) (end - start)) / CLOCKS_PER_SEC;
+	fprintf(fd, "%lf,", cpu_time_used);
 
 	// --- 2 ---
+	start = clock();
 	lu(permK);
 	solve(permK, permRHS);
+	end = clock();
+	cpu_time_used = ((double) (end - start)) / CLOCKS_PER_SEC;
+	fprintf(fd, "%lf,", cpu_time_used);
 
 	double *cpyRHS = (double *) malloc(2*n_nodes*sizeof(double));
 	memcpy(cpyRHS, RHS, 2*n_nodes*sizeof(double));
@@ -84,17 +98,27 @@ int main (int argc, char *argv[]) {
 	for (int i = 0; i < 2*n_nodes; i++) permRHS[i] = RHS[perm[i]]; // re-permute RHS
 
 	// --- 3 ---
+	start = clock();
 	lu_band(bandK);
 	solve_band(bandK, bandRHS);
+	end = clock();
+	cpu_time_used = ((double) (end - start)) / CLOCKS_PER_SEC;
+	fprintf(fd, "%lf\n", cpu_time_used);
 
 	memcpy(RHS, bandRHS, 2*n_nodes*sizeof(double));
 	for (int i = 0; i < 2*n_nodes; i++) bandRHS[i] = RHS[perm[i]]; // re-permute RHS
 
+	for (int i = 0; i < 2*n_nodes; i++) {
+		if (abs(permRHS[i] - bandRHS[i]) > 1e-10) {
+			printf("Error: %d %lf %lf", i, permRHS[i], bandRHS[i]);
+		}
+	}
+
 	// Visualization in Gmsh
-	visualize_in_gmsh(cpyRHS, gmsh_num, n_nodes);
+	// visualize_in_gmsh(permRHS, gmsh_num, n_nodes);
 
 	// Run the Gmsh GUI; Comment this line if you do not want the Gmsh window to launch
-	gmshFltkRun(&ierr);
+	// gmshFltkRun(&ierr);
 
 	// Free stuff
 	// --- 1 ---
