@@ -43,22 +43,23 @@ int main (int argc, char *argv[]) {
 	// Build matrix
 	// --- 1 ---
 	Matrix * K = allocate_matrix(2*n_nodes, 2*n_nodes);
+	for (int i = 0; i < K->m*K->n; i++) K->data[i] = 0.0;
 	for (int t=0; t<n_triplets; t++) K->a[triplets[t].i][triplets[t].j] += triplets[t].val;
 
 	// --- 2 ---
-	int *perm = (int *) malloc(2*n_nodes*sizeof(int));
+	int perm[2*n_nodes];
 	compute_permutation(perm, coord, n_nodes, triplets, n_triplets);
 
 	Matrix *permK = allocate_matrix(2*n_nodes, 2*n_nodes);
-	for (int i = 0; i < permK->m; i++) for (int j = 0; j < permK->n; j++) permK->a[i][j] = 0.0;
+	for (int i = 0; i < permK->m*permK->n; i++) permK->data[i] = 0.0;
 
 	int k = 0; // compute bandwidth
 	for (int t = 0; t < n_triplets; t++) {
 		if (abs(triplets[t].j - triplets[t].i) > k) k = abs(triplets[t].j - triplets[t].i);
 		permK->a[triplets[t].i][triplets[t].j] += triplets[t].val;
 	}
-    double *permRHS = (double *) malloc(2*n_nodes*sizeof(double));
-	memcpy(permRHS, RHS, 2*n_nodes*sizeof(double));
+
+	double permRHS[2*n_nodes];
 	for (int i = 0; i < 2*n_nodes; i++) permRHS[perm[i]] = RHS[i]; // permute RHS
 
 	// --- 3 ---
@@ -66,64 +67,66 @@ int main (int argc, char *argv[]) {
 	for (int i = 0; i < bandK->m*(2*bandK->k+1); i++) bandK->data[i] = 0.0;
 	for (int t = 0; t < n_triplets; t++) bandK->a[triplets[t].i][triplets[t].j] += triplets[t].val;
 
-    double *bandRHS = (double *) malloc(2*n_nodes*sizeof(double));
-	memcpy(bandRHS, RHS, 2*n_nodes*sizeof(double));
-	for (int i = 0; i < 2*n_nodes; i++) bandRHS[perm[i]] = RHS[i]; // permute RHS
+    double bandRHS[2*n_nodes];
+	memcpy(bandRHS, permRHS, 2*n_nodes*sizeof(double));
+
+	// --- 4 ---
+	SymBandMatrix *symK = allocate_sym_band_matrix(2*n_nodes, k);
+	for (int i = 0; i < symK->m*(symK->k+1); i++) symK->data[i] = 0.0;
+	for (int t = 0; t < n_triplets; t++) if (triplets[t].i <= triplets[t].j) symK->a[triplets[t].i][triplets[t].j] += triplets[t].val;
+
+	double symRHS[2*n_nodes];
+	memcpy(symRHS, permRHS, 2*n_nodes*sizeof(double));
 
 	// Solve linear system
-	double cpu_time_used;
-	clock_t start, end;
-	FILE *fd = fopen("time_results.csv", "a");
-	fprintf(fd, "%d,", n_nodes);
 
 	// --- 1 ---
-	start = clock();
 	lu(K);
 	solve(K, RHS);
-	end = clock();
-	cpu_time_used = ((double) (end - start)) / CLOCKS_PER_SEC;
-	fprintf(fd, "%lf,", cpu_time_used);
 
 	// --- 2 ---
-	start = clock();
 	lu(permK);
 	solve(permK, permRHS);
-	end = clock();
-	cpu_time_used = ((double) (end - start)) / CLOCKS_PER_SEC;
-	fprintf(fd, "%lf,", cpu_time_used);
 
-	double *cpyRHS = (double *) malloc(2*n_nodes*sizeof(double));
-	memcpy(cpyRHS, RHS, 2*n_nodes*sizeof(double));
-	memcpy(RHS, permRHS, 2*n_nodes*sizeof(double));
-	for (int i = 0; i < 2*n_nodes; i++) permRHS[i] = RHS[perm[i]]; // re-permute RHS
+	double AUX[2*n_nodes];
+	memcpy(AUX, permRHS, 2*n_nodes*sizeof(double));
+	for (int i = 0; i < 2*n_nodes; i++) permRHS[i] = AUX[perm[i]]; // re-permute RHS
 
 	// --- 3 ---
-	start = clock();
 	lu_band(bandK);
 	solve_band(bandK, bandRHS);
-	end = clock();
-	cpu_time_used = ((double) (end - start)) / CLOCKS_PER_SEC;
-	fprintf(fd, "%lf\n", cpu_time_used);
 
-	memcpy(RHS, bandRHS, 2*n_nodes*sizeof(double));
-	for (int i = 0; i < 2*n_nodes; i++) bandRHS[i] = RHS[perm[i]]; // re-permute RHS
+	memcpy(AUX, bandRHS, 2*n_nodes*sizeof(double));
+	for (int i = 0; i < 2*n_nodes; i++) bandRHS[i] = AUX[perm[i]]; // re-permute RHS
+
+	// --- 4 ---
+	cholesky(symK);
+	solve_cholesky(symK, symRHS);
+
+	memcpy(AUX, symRHS, 2*n_nodes*sizeof(double));
+	for (int i = 0; i < 2*n_nodes; i++) symRHS[i] = AUX[perm[i]]; // re-permute RHS
 
 	for (int i = 0; i < 2*n_nodes; i++) {
+		if (abs(RHS[i] - permRHS[i]) > 1e-10) {
+			printf("Error RHS vs permRHS: %d %lf %lf\n", i, RHS[i], permRHS[i]);
+		}
 		if (abs(permRHS[i] - bandRHS[i]) > 1e-10) {
-			printf("Error: %d %lf %lf", i, permRHS[i], bandRHS[i]);
+			printf("Error permRHS vs bandRHS : %d %lf %lf\n", i, permRHS[i], bandRHS[i]);
+		}
+		if (abs(bandRHS[i] - symRHS[i]) > 1e-10) {
+			printf("Error: %d %lf %lf\n", i, bandRHS[i], symRHS[i]);
 		}
 	}
 
 	// Visualization in Gmsh
-	// visualize_in_gmsh(permRHS, gmsh_num, n_nodes);
+	visualize_in_gmsh(symRHS, gmsh_num, n_nodes);
 
 	// Run the Gmsh GUI; Comment this line if you do not want the Gmsh window to launch
-	// gmshFltkRun(&ierr);
+	gmshFltkRun(&ierr);
 
 	// Free stuff
 	// --- 1 ---
 	free(RHS);
-	free(cpyRHS);
 	free(gmsh_num);
 	free(coord);
 	free(triplets);
@@ -131,13 +134,13 @@ int main (int argc, char *argv[]) {
 	gmshFinalize(&ierr);
 
 	// --- 2 ---
-	free(perm);
 	free_matrix(permK);
-	free(permRHS);
 
 	// --- 3 ---
 	free_band_matrix(bandK);
-	free(bandRHS);
+
+	// --- 4 ---
+	free_sym_band_matrix(symK);
 
 	return 0;
 }

@@ -27,6 +27,7 @@ int solve_band(BandMatrix * LU, double * y);
 
 // --- AUXILIARY FUNCTIONS ---
 // Calcule la décomposition de Cholesky de A "in-place":
-int cholesky(Matrix * A);
+int cholesky(SymBandMatrix * A);
+int solve_cholesky(SymBandMatrix * LLT, double * y);
 
 #endif

@@ -32,6 +32,7 @@ void print_vector(double * v, int n);   // imprime le contenu d'un vecteur (tabl
 void print_matrix(Matrix * A);          // imprime le contenu d'une matrice
 
 // --- AUXILIARY FUNCTIONS ---
+int mult_matrix(Matrix * A, Matrix * B, Matrix * C); // multiplie les matrices A et B et stocke le résultat dans C
 
 typedef struct {
 	double x;
@@ -47,5 +48,16 @@ void print_band_matrix(BandMatrix * A); // imprime le contenu d'une matrice band
 
 void matrix_to_csv(Matrix * A, char * filename); // écrit le contenu d'une matrice dans un fichier CSV
 void bandmatrix_to_csv(BandMatrix * A, char * filename); // écrit le contenu d'une matrice bande dans un fichier CSV
+
+typedef struct SymBandMatrix{
+	int m, k;
+	double * data;
+	double ** a;
+} SymBandMatrix;
+
+SymBandMatrix * allocate_sym_band_matrix(int m, int k); // alloue une matrice symétrique bande de dimensions données
+void free_sym_band_matrix(SymBandMatrix * mat); // libère la mémoire de la structure SymBandMatrix donnée
+void print_sym_band_matrix(SymBandMatrix * A); // imprime le contenu d'une matrice symétrique bande
+void symbandmatrix_to_csv(SymBandMatrix * A, char * filename); // écrit le contenu d'une matrice symétrique bande dans un fichier CSV
 
 #endif

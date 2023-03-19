@@ -54,6 +54,30 @@ BandMatrix * allocate_band_matrix(int m, int k) {
 }
 
 /**
+ * Alloue une matrice symétrique bande de dimension m x m et largeur de bande k
+ * @param m: nombre de lignes et de colonnes
+ * @param k: largeur de bande
+ * @return pointeur vers une nouvelle structure de données allouée SymBandMatrix
+*/
+SymBandMatrix * allocate_sym_band_matrix(int m, int k) {
+    SymBandMatrix *mat = (SymBandMatrix *) malloc(sizeof(SymBandMatrix));
+    if (mat == NULL) {
+        strerror(errno);
+    }
+    mat->m = m; mat->k = k;
+
+    double *data = (double *) malloc(sizeof(double)*m*(k+1));
+    double **a = (double **) malloc(sizeof(double *)*m);
+    if (data == NULL || a == NULL) {
+        strerror(errno);
+    }
+    for (int i = 0; i < m; i++) *(a + i) = data + k*i;
+    mat->data = data;
+    mat->a = a;
+    return mat;
+}
+
+/**
  * Libère du heap une structure Matrix précédemment allouée
  * @param mat: structure à libérer
 */
@@ -68,6 +92,16 @@ void free_matrix(Matrix * mat) {
  * @param mat: structure à libérer
 */
 void free_band_matrix(BandMatrix * mat) {
+    free(mat->a);
+    free(mat->data);
+    free(mat);
+}
+
+/**
+ * Libère du heap une structure SymBandMatrix précédemment allouée
+ * @param mat: structure à libérer
+*/
+void free_sym_band_matrix(SymBandMatrix * mat) {
     free(mat->a);
     free(mat->data);
     free(mat);
@@ -145,7 +179,6 @@ int compute_permutation(int * perm, double * coord, int n_nodes, Triplet * tripl
     return 0;
 }
 
-
 /**
  * Imprime le contenu du vecteur v sur la sortie standard
  * @param v: vecteur de taille n
@@ -189,6 +222,21 @@ void print_band_matrix(BandMatrix * A) {
 }
 
 /**
+ * Imprime le contenu de la matrice bande symétrique A sur la sortie standard
+ * @param A: matrice bande symétrique de dimension m x m et largeur de bande k
+*/
+void print_sym_band_matrix(SymBandMatrix * A) {
+    for (int i = 0; i < A->m; i++) {
+        for (int j = 0; j < A->m; j++) {
+            if (i <= j && abs(i - j) <= A->k) printf("%.2e\t", A->a[i][j]);
+            else printf("%.2e\t", 0.0);
+        }
+        printf("\n");
+    }
+    printf("\n");
+}
+
+/**
  * Imprime le contenu d'un tableau de triplets sur la sortie standard
  * @param t: tableau de taille n
  * @param n: taille du tableau
@@ -210,8 +258,8 @@ void matrix_to_csv(Matrix * A, char * filename) {
     fp = fopen(filename, "w");
     for (int i = 0; i < A->m; i++) {
         for (int j = 0; j < A->n; j++) {
-            if (j==A->n-1) fprintf(fp, "%f", A->a[i][j]);
-     		else fprintf(fp, "%f,", A->a[i][j]);
+            if (j==A->n-1) fprintf(fp, "%lf", A->a[i][j]);
+     		else fprintf(fp, "%lf, ", A->a[i][j]);
         }
         fprintf(fp, "\n");
     }
@@ -229,13 +277,54 @@ void bandmatrix_to_csv(BandMatrix * A, char * filename) {
     for (int i = 0; i < A->m; i++) {
         for (int j = 0; j < A->m; j++) {
             if (abs(j - i) > A->k) {
-                if (j == A->m - 1) fprintf(fp, "%f", 0.0);
-                else fprintf(fp, "%f,", 0.0);
+                if (j == A->m - 1) fprintf(fp, "%lf", 0.0);
+                else fprintf(fp, "%lf,", 0.0);
             } else {
-                if (j == A->m - 1) fprintf(fp, "%f", A->a[i][j]);
-                else fprintf(fp, "%f,", A->a[i][j]);
+                if (j == A->m - 1) fprintf(fp, "%lf", A->a[i][j]);
+                else fprintf(fp, "%lf,", A->a[i][j]);
             }
         }
         fprintf(fp, "\n");
     }
+}
+
+void symbandmatrix_to_csv(SymBandMatrix * A, char * filename) {
+    FILE *fp;
+    fp = fopen(filename, "w");
+    for (int i = 0; i < A->m; i++) {
+        for (int j = 0; j < A->m; j++) {
+            if (abs(i - j) <= A->k) {
+                double aij = (i <= j) ? A->a[i][j] : 0.0;
+                if (j == A->m - 1) fprintf(fp, "%lf", aij);
+                else fprintf(fp, "%lf,", aij);
+            } else {
+                if (j == A->m - 1) fprintf(fp, "%lf", 0.0);
+                else fprintf(fp, "%lf,", 0.0);
+            }
+        }
+        fprintf(fp, "\n");
+    }
+}
+
+/**
+ * Fonction auxiliaire calculant le produit matriciel C = A@B
+ * @param A: matrice de dimension m x p
+ * @param B: matrice de dimension p x n
+ * @param C: matrice de dimension m x n
+ * @return -1 si les dimensions sont incompatibles, 0 sinon
+*/
+int mult_matrix(Matrix * A, Matrix * B, Matrix * C) {
+	int m = A->m, p = A->n, n = B->n;
+    if (B->m != p) return -1;
+    if (C->m != m || C->n != n) return -1;
+
+	for (int i = 0; i < m; i++) {
+		for (int j = 0; j < n; j++) {
+			C->data[i * n + j] = 0.0;
+			for (int k = 0; k < p; k++) {
+				C->data[i * n + j] += A->a[i][k] * B->a[k][j];
+			}
+		}
+	}
+	return 0;
 }
